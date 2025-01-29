@@ -30,7 +30,7 @@ public class JogoDaForcaController {
     }
 
     @RequestMapping("/adivinhar")
-    public String adivinharPalavra(@RequestParam("palavra") String palavra) {
+    public Map<String, Object>   adivinharPalavra(@RequestParam("palavra") String palavra) {
         return jogoDaForcaService.adivinharPalavra(palavra);
     }
 }

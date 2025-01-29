@@ -4,6 +4,7 @@ import com.example.jogodaforca.infra.GerarPalavraEDica;
 import com.example.jogodaforca.model.JogoDaForca;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,9 +36,9 @@ public class JogoDaForcaService {
         progresso = new StringBuilder();
         for (int i = 0; i < palavraSecreta.length(); i++) {
             if (Character.isLetter(palavraSecreta.charAt(i))) {
-                progresso.append("_"); // Caracter para letras escondidas
+                progresso.append("_");
             } else {
-                progresso.append(palavraSecreta.charAt(i)); // Caracteres como espaços ou pontuações permanecem visíveis
+                progresso.append(palavraSecreta.charAt(i));
             }
         }
 
@@ -52,11 +53,12 @@ public class JogoDaForcaService {
     public Map<String, Object> tentar(char letra) {
         boolean acertou = false;
         String palavraSecreta = jogoDaForca.getPalavraSecreta();
+        String letraNormalizada = removerAcentuacao(String.valueOf(letra));
 
-        // Iterar pela palavra secreta para verificar ocorrências da letra
         for (int i = 0; i < palavraSecreta.length(); i++) {
-            if (Character.toLowerCase(palavraSecreta.charAt(i)) == Character.toLowerCase(letra)) {
-                this.progresso.setCharAt(i, palavraSecreta.charAt(i)); // Atualiza o progresso com a letra correta
+            if (removerAcentuacao(String.valueOf(palavraSecreta.charAt(i)))
+                    .equalsIgnoreCase(letraNormalizada)) {
+                this.progresso.setCharAt(i, palavraSecreta.charAt(i));
                 acertou = true;
             }
         }
@@ -66,15 +68,13 @@ public class JogoDaForcaService {
             erros++;
         }
 
-        // Criar um mapa para retornar as informações necessárias ao frontend
         Map<String, Object> response = new HashMap<>();
         response.put("acerto", acertou);
         response.put("progresso", progresso.toString());
         response.put("erros", erros);
 
-        // Verificar se o jogador completou a palavra
         if (progresso.toString().replace(" ", "").equalsIgnoreCase(palavraSecreta.replace(" ", ""))) {
-            response.put("mensagem", "Parabéns! Você venceu! A palavra era: " + palavraSecreta);
+            response.put("mensagem", "Parabéns! Você venceu!");
             response.put("vitoria", true);
         } else if (erros >= maxErros) { // Supondo que há um limite de erros
             response.put("mensagem", "Você perdeu! A palavra era: " + palavraSecreta);
@@ -87,15 +87,36 @@ public class JogoDaForcaService {
         return response;
     }
 
-    public String adivinharPalavra(String tentativa) {
+    public Map<String, Object> adivinharPalavra(String tentativa) {
         String palavraSecreta = jogoDaForca.getPalavraSecreta();
+        Map<String, Object> response = new HashMap<>();
 
-        if (palavraSecreta.equalsIgnoreCase(tentativa)) {
-            progresso = new StringBuilder(palavraSecreta);
-            return "Parabéns! Você venceu! A palavra era: " + palavraSecreta;
+        String palavraSecretaNormalizada = removerAcentuacao(palavraSecreta);
+        String tentativaNormalizada = removerAcentuacao(tentativa);
+
+        if (palavraSecretaNormalizada.equalsIgnoreCase(tentativaNormalizada)) {
+            if (progresso == null) {
+                progresso = new StringBuilder(palavraSecreta);
+            } else {
+                progresso.replace(0, progresso.length(), palavraSecreta);
+            }
+
+            response.put("progresso", progresso.toString());
+            response.put("mensagem", "Parabéns! Você venceu!");
+            response.put("vitoria", true);
         } else {
+            // Se errar, marca o jogo como perdido
             erros = 6;
-            return "Resposta incorreta! Você perdeu!\nA palavra era: " + palavraSecreta;
+            response.put("mensagem", "Resposta incorreta! Você perdeu! A palavra era: " + palavraSecreta);
+            response.put("vitoria", false);
         }
+
+        return response;
     }
+
+    public String removerAcentuacao(String texto) {
+        return Normalizer.normalize(texto, Normalizer.Form.NFD)
+                .replaceAll("[^\\p{ASCII}]", "");
+    }
+
 }
